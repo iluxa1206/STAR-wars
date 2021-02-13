@@ -526,3 +526,104 @@ class StarWars(object):
         sprite.groupcollide(self.vragRocket, self.allOgrad, True, True)
         if self.vragi.bottom >= POSSITION_OGRAD:
             sprite.groupcollide(self.vragi, self.allOgrad, False, True)
+        
+            def create_new_ship(self, createShip, currentTime):
+        if createShip and (currentTime - self.shipTimer > 900):
+            self.player = Hero()
+            self.allSprites.add(self.player)
+            self.playerGroup.add(self.player)
+            self.makeNewHero = False
+            self.shipAlive = True
+
+    def create_game_over(self, currentTime):
+        self.screen.blit(self.background, (0, 0))
+        passed = currentTime - self.timer
+        if passed < 750:
+            self.gameOverText.draw(self.screen)
+        elif 750 < passed < 1500:
+            self.screen.blit(self.background, (0, 0))
+        elif 1500 < passed < 2250:
+            self.gameOverText.draw(self.screen)
+        elif 2250 < passed < 2750:
+            self.screen.blit(self.background, (0, 0))
+        elif passed > 3000:
+            self.mainScreen = True
+
+        for e in event.get():
+            if should_exit(e):
+                sys.exit()
+
+    def main(self):
+        while True:
+            if self.mainScreen:
+                self.screen.blit(self.background, (0, 0))
+                self.titleText.draw(self.screen)
+                self.titleText2.draw(self.screen)
+                self.enemy1Text.draw(self.screen)
+                self.enemy2Text.draw(self.screen)
+                self.enemy3Text.draw(self.screen)
+                self.enemy4Text.draw(self.screen)
+                self.create_main_menu()
+                for e in event.get():
+                    if should_exit(e):
+                        sys.exit()
+                    if e.type == KEYUP:
+                        # Only create blockers on a new game, not a new round
+                        self.allOgrad = sprite.Group(self.make_ograd(0),
+                                                        self.make_ograd(1),
+                                                        self.make_ograd(2),
+                                                        self.make_ograd(3))
+                        self.livesGroup.add(self.life1, self.life2, self.life3)
+                        self.reset(0)
+                        self.startGame = True
+                        self.mainScreen = False
+
+            elif self.startGame:
+                if not self.vragi and not self.explosionsGroup:
+                    currentTime = time.get_ticks()
+                    if currentTime - self.gameTimer < 3000:
+                        self.screen.blit(self.background, (0, 0))
+                        self.scoreText2 = Text(SHRIFT_1, 20, str(self.score),
+                                               GREEN, 85, 5)
+                        self.scoreText.draw(self.screen)
+                        self.scoreText2.draw(self.screen)
+                        self.nextRoundText.draw(self.screen)
+                        self.livesText.draw(self.screen)
+                        self.livesGroup.update()
+                        self.check_input()
+                    if currentTime - self.gameTimer > 3000:
+                        # Move enemies closer to bottom
+                        self.vragPos += SDVIG_VRAGOV
+                        self.reset(self.score)
+                        self.gameTimer += 3000
+                else:
+                    currentTime = time.get_ticks()
+                    self.play_main_music(currentTime)
+                    self.screen.blit(self.background, (0, 0))
+                    self.allOgrad.update(self.screen)
+                    self.scoreText2 = Text(SHRIFT_1, 20, str(self.score), GREEN,
+                                           85, 5)
+                    self.scoreText.draw(self.screen)
+                    self.scoreText2.draw(self.screen)
+                    self.livesText.draw(self.screen)
+                    self.check_input()
+                    self.vragi.update(currentTime)
+                    self.allSprites.update(self.keys, currentTime)
+                    self.explosionsGroup.update(currentTime)
+                    self.check_collisions()
+                    self.create_new_ship(self.makeNewHero, currentTime)
+                    self.make_vragi_shoot()
+
+            elif self.gameOver:
+                currentTime = time.get_ticks()
+                # Reset enemy starting position
+                self.vragPos = POSSITION_VRAGOV
+                self.create_game_over(currentTime)
+
+            display.update()
+            self.clock.tick(60)
+
+
+if __name__ == '__main__':
+    game = StarWars()
+    game.main()
