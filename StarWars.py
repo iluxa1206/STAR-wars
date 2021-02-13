@@ -240,3 +240,79 @@ class Mystery(sprite.Sprite):
             resetTimer = True
         if passed > self.moveTime and resetTimer:
             self.timer = currentTime
+
+ def get_image():
+    return PHOTOS['boom']
+
+class VragExplosion(sprite.Sprite):
+    def __init__(self, vrag, *groups):
+        super(VragExplosion, self).__init__(*groups)
+        self.image = transform.scale(get_image(), (40, 35))
+        self.image2 = transform.scale(get_image(), (50, 45))
+        self.rect = self.image.get_rect(topleft=(vrag.rect.x, vrag.rect.y))
+        self.timer = time.get_ticks()
+
+
+    def update(self, current_time, *args):
+        passed = current_time - self.timer
+        if passed <= 100:
+            game.screen.blit(self.image, self.rect) #РАСШИРЕНИЕ ВЗРЫВА
+        elif passed <= 200:
+            game.screen.blit(self.image2, (self.rect.x - 6, self.rect.y - 6))
+        elif 400 < passed:
+            self.kill()
+
+
+class MysteryExplosion(sprite.Sprite):
+    def __init__(self, mystery, score, *groups):
+        super(MysteryExplosion, self).__init__(*groups)
+        self.text = Text(SHRIFT_1, 20, str(score), WHITE,
+                         mystery.rect.x + 20, mystery.rect.y + 6)
+        self.timer = time.get_ticks()
+
+    def update(self, current_time, *args):
+        passed = current_time - self.timer
+        if passed <= 200 or 400 < passed <= 600:
+            self.text.draw(game.screen)
+        elif 600 < passed:
+            self.kill()
+
+
+class ShipExplosion(sprite.Sprite):
+    def __init__(self, ship, *groups):
+        super(ShipExplosion, self).__init__(*groups)
+        self.image = PHOTOS['hero']
+        self.rect = self.image.get_rect(topleft=(ship.rect.x, ship.rect.y))
+        self.timer = time.get_ticks()
+
+    def update(self, current_time, *args):
+        passed = current_time - self.timer
+        if 300 < passed <= 600:
+            game.screen.blit(self.image, self.rect)
+        elif 900 < passed:
+            self.kill()
+
+
+class Life(sprite.Sprite):
+    def __init__(self, xpos, ypos):
+        sprite.Sprite.__init__(self) #ОТОБРАЖЕНИЕ КОЛИЧЕСТВА ЖИЗНЕЙ
+        self.image = PHOTOS['hero']
+        self.image = transform.scale(self.image, (23, 23))
+        self.rect = self.image.get_rect(topleft=(xpos, ypos))
+
+    def update(self, *args):
+        game.screen.blit(self.image, self.rect)
+
+
+class Text(object):
+    def __init__(self, textFont, size, message, color, xpos, ypos):
+        self.font = font.Font(textFont, size)
+        self.surface = self.font.render(message, True, color)
+        self.rect = self.surface.get_rect(topleft=(xpos, ypos))
+
+    def draw(self, surface):
+        surface.blit(self.surface, self.rect)
+
+
+def should_exit(evt):
+    return evt.type == QUIT or (evt.type == KEYUP and evt.key == K_ESCAPE)
