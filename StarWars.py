@@ -316,3 +316,213 @@ class Text(object):
 
 def should_exit(evt):
     return evt.type == QUIT or (evt.type == KEYUP and evt.key == K_ESCAPE)
+  
+
+class StarWars(object):
+    def __init__(self):
+        mixer.pre_init(44100, -16, 1, 4096)
+        init()
+        self.clock = time.Clock()
+        self.caption = display.set_caption('STAR WARS')
+        self.screen = SCREEN
+        self.background = image.load(KARTINKI + 'bg.jpg').convert()
+        self.startGame = False
+        self.mainScreen = True
+        self.gameOver = False
+        self.vragPos = POSSITION_VRAGOV
+        self.titleText = Text(SHRIFT_1, 50, 'STAR WARS', WHITE, 260, 155)
+        self.titleText2 = Text(SHRIFT_1, 25, 'Press any key', WHITE,
+                               310, 225)
+        self.gameOverText = Text(SHRIFT_1, 50, 'Game Over', WHITE, 250, 270)
+        self.nextRoundText = Text(SHRIFT_1, 50, 'Next Round', WHITE, 240, 270)
+        self.enemy1Text = Text(SHRIFT_1, 25, '   =   10 pts', GREEN, 368, 270)
+        self.enemy2Text = Text(SHRIFT_1, 25, '   =  20 pts', BLUE, 368, 320)
+        self.enemy3Text = Text(SHRIFT_1, 25, '   =  30 pts', PURPLE, 368, 370)
+        self.enemy4Text = Text(SHRIFT_1, 25, '   =  ?????', RED, 368, 420)
+        self.scoreText = Text(SHRIFT_1, 20, 'Score', WHITE, 5, 5)
+        self.livesText = Text(SHRIFT_1, 20, 'Lives ', WHITE, 640, 5)
+
+        self.life1 = Life(715, 3)
+        self.life2 = Life(742, 3)
+        self.life3 = Life(769, 3)
+        self.livesGroup = sprite.Group(self.life1, self.life2, self.life3)
+
+    def reset(self, score):
+        self.player = Hero()
+        self.playerGroup = sprite.Group(self.player)
+        self.explosionsGroup = sprite.Group()
+        self.rocket = sprite.Group()
+        self.mysteryShip = Mystery()
+        self.mysteryGroup = sprite.Group(self.mysteryShip)
+        self.vragRocket = sprite.Group()
+        self.make_vragi()
+        self.allSprites = sprite.Group(self.player, self.vragi,
+                                       self.livesGroup, self.mysteryShip)
+        self.keys = key.get_pressed()
+
+        self.timer = time.get_ticks()
+        self.noteTimer = time.get_ticks()
+        self.shipTimer = time.get_ticks()
+        self.score = score
+        self.create_audio()
+        self.makeNewHero = False
+        self.shipAlive = True
+
+    def make_ograd(self, number):
+        ogradGroup = sprite.Group()
+        for row in range(4):
+            for column in range(9):
+                ograd = Blocker(10, GREY, row, column)
+                ograd.rect.x = 50 + (200 * number) + (column * ograd.width)
+                ograd.rect.y = POSSITION_OGRAD + (row * ograd.height)
+                ogradGroup.add(ograd)
+        return ogradGroup
+
+    def create_audio(self):
+        self.music = {}
+        for music_name in ['shoot', 'shoot2', 'invaderkilled', 'mysterykilled',
+                           'shipexplosion']:
+            self.music[music_name] = mixer.Sound(
+                MUSIC + '{}.wav'.format(music_name))
+            self.music[music_name].set_volume(0.2)
+
+        self.musicNotes = [mixer.Sound(MUSIC + '{}.wav'.format(i)) for i
+                           in range(4)]
+        for sound in self.musicNotes:
+            sound.set_volume(0.5)
+
+        self.noteIndex = 0
+
+    def play_main_music(self, currentTime):
+        if currentTime - self.noteTimer > self.vragi.moveTime:
+            self.note = self.musicNotes[self.noteIndex]
+            if self.noteIndex < 3:
+                self.noteIndex += 1
+            else:
+                self.noteIndex = 0
+
+            self.note.play()
+            self.noteTimer += self.vragi.moveTime
+
+
+    def check_input(self):
+        self.keys = key.get_pressed()
+        for e in event.get():
+            if should_exit(e):
+                sys.exit()
+            if e.type == KEYDOWN:
+                if e.key == K_SPACE:
+                    if len(self.rocket) == 0 and self.shipAlive:
+                        if self.score < 1000:
+                            rocket = Rocket(self.player.rect.x + 23,
+                                            self.player.rect.y + 5, -1,
+                                            15, 'laser', 'center')
+                            self.rocket.add(rocket)
+                            self.allSprites.add(self.rocket)
+                            self.music['shoot'].play()
+                        else:
+                            leftrocket = Rocket(self.player.rect.x + 8,
+                                                self.player.rect.y + 5, -1,
+                                                15, 'laser', 'left')
+                            rightrocket = Rocket(self.player.rect.x + 38,
+                                                 self.player.rect.y + 5, -1,
+                                                 15, 'laser', 'right')
+                            self.rocket.add(leftrocket)
+                            self.rocket.add(rightrocket)
+                            self.allSprites.add(self.rocket)
+                            self.music['shoot2'].play()
+
+    def make_vragi(self):
+        vragi = RaspolVrag(10, 5)
+        for row in range(5):
+            for column in range(10):
+                vrag = Vragi(row, column)
+                vrag.rect.x = 157 + (column * 50)
+                vrag.rect.y = self.vragPos + (row * 45)
+                vragi.add(vrag)
+
+        self.vragi = vragi
+
+    def make_vragi_shoot(self):
+        if (time.get_ticks() - self.timer) > 700 and self.vragi:
+            vrag = self.vragi.random_bottom()
+            self.vragRocket.add(
+                Rocket(vrag.rect.x + 14, vrag.rect.y + 20, 1, 5,
+                       'vraglaser', 'center'))
+            self.allSprites.add(self.vragRocket)
+            self.timer = time.get_ticks()
+
+    def calculate_score(self, row):
+        scores = {0: 30,
+                  1: 20,
+                  2: 20,
+                  3: 10,
+                  4: 10,
+                  5: choice([50, 100, 150, 300])
+                  }
+
+        score = scores[row]
+        self.score += score
+        return score
+
+    def create_main_menu(self):
+        self.vrag1= PHOTOS['enemy3']
+        self.vrag1 = transform.scale(self.vrag1, (40, 40))
+        self.vrag2 = PHOTOS['enemy2']
+        self.vrag2 = transform.scale(self.vrag2, (40, 40))
+        self.vrag3 = PHOTOS['enemy1']
+        self.vrag3 = transform.scale(self.vrag3, (40, 40))
+        self.vrag4 = PHOTOS['mystery']
+        self.vrag4 = transform.scale(self.vrag4, (80, 40))
+        self.screen.blit(self.vrag1, (318, 270))
+        self.screen.blit(self.vrag2, (318, 320))
+        self.screen.blit(self.vrag3, (318, 370))
+        self.screen.blit(self.vrag4, (299, 420))
+
+    def check_collisions(self):
+        sprite.groupcollide(self.rocket, self.vragRocket, True, True)
+
+        for vrag in sprite.groupcollide(self.vragi, self.rocket,
+                                         True, True).keys():
+            self.music['invaderkilled'].play()
+            self.calculate_score(vrag.row)
+            VragExplosion(vrag, self.explosionsGroup)
+            self.gameTimer = time.get_ticks()
+
+        for mystery in sprite.groupcollide(self.mysteryGroup, self.rocket,
+                                           True, True).keys():
+            mystery.mysteryEntered.stop()
+            self.music['mysterykilled'].play()
+            score = self.calculate_score(mystery.row)
+            MysteryExplosion(mystery, score, self.explosionsGroup)
+            newShip = Mystery()
+            self.allSprites.add(newShip)
+            self.mysteryGroup.add(newShip)
+
+        for player in sprite.groupcollide(self.playerGroup, self.vragRocket,
+                                          True, True).keys():
+            if self.life3.alive():
+                self.life3.kill()
+            elif self.life2.alive():
+                self.life2.kill()
+            elif self.life1.alive():
+                self.life1.kill()
+            else:
+                self.gameOver = True
+                self.startGame = False
+            self.music['shipexplosion'].play()
+            ShipExplosion(player, self.explosionsGroup)
+            self.makeNewHero = True
+            self.shipTimer = time.get_ticks()
+            self.shipAlive = False
+
+        if self.vragi.bottom >= 540:
+            sprite.groupcollide(self.vragi, self.playerGroup, True, True)
+            if not self.player.alive() or self.vragi.bottom >= 600:
+                self.gameOver = True
+                self.startGame = False
+
+        sprite.groupcollide(self.rocket, self.allOgrad, True, True)
+        sprite.groupcollide(self.vragRocket, self.allOgrad, True, True)
+        if self.vragi.bottom >= POSSITION_OGRAD:
+            sprite.groupcollide(self.vragi, self.allOgrad, False, True)
